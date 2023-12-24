@@ -1,4 +1,4 @@
-package uz.uni_team.bluetooth_sample.ui.theme
+package uz.uni_team.bluetooth_sample.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 

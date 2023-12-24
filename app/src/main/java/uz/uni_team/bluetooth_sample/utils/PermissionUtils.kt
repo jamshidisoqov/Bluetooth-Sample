@@ -42,8 +42,8 @@ fun Context.checkPermission(permission: String, onGranted: () -> Unit, onDenied:
 
 fun Context.checkPermissions(
     permission: List<String>,
-    onGranted: () -> Unit,
-    onDenied: () -> Unit
+    onGranted: () -> Unit = {},
+    onDenied: () -> Unit = {}
 ) {
     Dexter.withContext(this).withPermissions(permission).withListener(
             object : MultiplePermissionsListener {
