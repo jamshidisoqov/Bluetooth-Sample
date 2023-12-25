@@ -2,6 +2,7 @@ package uz.uni_team.bluetooth_sample.presentation.main
 
 import android.Manifest
 import android.os.Build
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,9 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -32,6 +36,7 @@ import androidx.lifecycle.flowWithLifecycle
 import cafe.adriel.voyager.androidx.AndroidScreen
 import cafe.adriel.voyager.hilt.getViewModel
 import cafe.adriel.voyager.navigator.LocalNavigator
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -86,30 +91,34 @@ class MainScreen : AndroidScreen() {
             }.launchIn(this)
         }
 
-        MainContent(
-            uiState = uiState,
-            onScanOrStop = {
-                if (uiState.isScanning) {
-                    viewModel.stopDiscovery()
-                } else {
-                    if (context.isPermissionsEnabled(bluetoothPermissions)) {
-                        viewModel.startDiscovery()
+        if (uiState.isConnecting) {
+            ConnectingStateContent()
+        } else {
+            MainContent(
+                uiState = uiState,
+                onScanOrStop = {
+                    if (uiState.isScanning) {
+                        viewModel.stopDiscovery()
                     } else {
-                        context.checkPermissions(
-                            permission = bluetoothPermissions,
-                            onGranted = {
-                                viewModel.startDiscovery()
-                            },
-                            onDenied = {
-                                viewModel.showSnackMessage("Denied")
-                            },
-                        )
+                        if (context.isPermissionsEnabled(bluetoothPermissions)) {
+                            viewModel.startDiscovery()
+                        } else {
+                            context.checkPermissions(
+                                permission = bluetoothPermissions,
+                                onGranted = {
+                                    viewModel.startDiscovery()
+                                },
+                                onDenied = {
+                                    viewModel.showSnackMessage("Denied")
+                                },
+                            )
+                        }
                     }
-                }
-            },
-            onDeviceClick = viewModel::connectToDevice,
-            onStartServer = viewModel::waitForIncomingConnections
-        )
+                },
+                onDeviceClick = viewModel::connectToDevice,
+                onStartServer = viewModel::waitForIncomingConnections
+            )
+        }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -162,9 +171,13 @@ class MainScreen : AndroidScreen() {
                                 )
                             }
                             items(items = uiState.pairedDevices) { pairedDevice ->
-                                PairedDeviceItem(bluetoothDevice = pairedDevice) {
-                                    //Click to open menu
-                                }
+                                PairedDeviceItem(
+                                    bluetoothDevice = pairedDevice,
+                                    onClick = {
+                                        onDeviceClick.invoke(pairedDevice)
+                                    },
+                                    onSettingsClick = {},
+                                )
                             }
                         }
                         if (uiState.scannedDevices.isNotEmpty()) {
@@ -184,6 +197,35 @@ class MainScreen : AndroidScreen() {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun ConnectingStateContent() {
+        var connectingCount: Int by remember {
+            mutableIntStateOf(1)
+        }
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(1000)
+                connectingCount += 1
+                if (connectingCount > 3) connectingCount = 0
+            }
+        }
+
+
+        val connectingText = "Connecting ".apply {
+            for (i in 1..connectingCount) {
+                plus(".")
+            }
+        }
+
+
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                Text(text = connectingText)
             }
         }
     }

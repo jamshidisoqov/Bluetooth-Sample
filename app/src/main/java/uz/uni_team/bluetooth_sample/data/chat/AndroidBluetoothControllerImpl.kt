@@ -113,16 +113,22 @@ class AndroidBluetoothControllerImpl(private val context: Context) : BluetoothCo
         }
     }
 
-    private val bluetoothStateReceiver = BluetoothStateReceiver { isConnected, bluetoothDevice ->
-        if (bluetoothAdapter?.bondedDevices?.contains(bluetoothDevice) == true) {
-            _lastConnectedDevice = bluetoothDevice.mapToBluetoothDeviceDomain()
-            _isConnected.update { isConnected }
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                _errors.emit("Can't connect to a non-paired device.")
+    private val bluetoothStateReceiver = BluetoothStateReceiver(
+        onStateChanged = { isConnected, bluetoothDevice ->
+            if (bluetoothAdapter?.bondedDevices?.contains(bluetoothDevice) == true) {
+                _lastConnectedDevice = bluetoothDevice.mapToBluetoothDeviceDomain()
+                _isConnected.update { isConnected }
+            } else {
+                CoroutineScope(Dispatchers.IO).launch {
+                    _errors.emit("Can't connect to a non-paired device.")
+                }
             }
-        }
-    }
+        },
+        onBluetoothTurnStateChanged = {
+            closeConnection()
+            openBluetoothRequest()
+        },
+    )
 
     private val bluetoothDiscoveryStateReceiver by lazy {
         BluetoothDiscoveryStateReceiver(
@@ -187,7 +193,6 @@ class AndroidBluetoothControllerImpl(private val context: Context) : BluetoothCo
 
     private fun getPairedDevices() {
         if (!context.isPermissionEnabled(scanPermission)) return
-        //if (!isBluetoothEnabled) return openBluetoothRequest()
         bluetoothAdapter?.bondedDevices?.map {
             it.mapToBluetoothDeviceDomain()
         }?.also { devices ->
