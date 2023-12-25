@@ -11,10 +11,22 @@
         android:name="android.permission.BLUETOOTH_CONNECT"
         android:usesPermissionFlags="neverForLocation"
         tools:ignore="UnusedAttribute" />
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation"
         tools:ignore="UnusedAttribute" />
+
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
 
     <application
         android:name=".BluetoothApp"
@@ -30,7 +42,8 @@
         <activity
             android:name=".presentation.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.BluetoothSample">
+            android:theme="@style/Theme.BluetoothSample"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -38,7 +51,9 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".data.chat.FoundDeviceReceiver"/>
+        <receiver android:name=".data.chat.FoundDeviceReceiver" />
+        <receiver android:name=".data.chat.BluetoothDiscoveryStateReceiver" />
+        <receiver android:name=".data.chat.BluetoothStateReceiver" />
 
     </application>
 

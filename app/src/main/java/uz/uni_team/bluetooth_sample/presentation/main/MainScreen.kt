@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -29,19 +31,31 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.flowWithLifecycle
 import cafe.adriel.voyager.androidx.AndroidScreen
 import cafe.adriel.voyager.hilt.getViewModel
+import cafe.adriel.voyager.navigator.LocalNavigator
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import uz.uni_team.bluetooth_sample.R
+import uz.uni_team.bluetooth_sample.domain.chat.BluetoothDevice
+import uz.uni_team.bluetooth_sample.presentation.chat.ChatScreen
 import uz.uni_team.bluetooth_sample.utils.checkPermissions
 import uz.uni_team.bluetooth_sample.utils.isPermissionsEnabled
 
 
 val bluetoothPermissions by lazy {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+        listOf(
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_ADVERTISE
+        )
     } else {
-        listOf()
+        listOf(
+            Manifest.permission.BLUETOOTH_ADMIN,
+            Manifest.permission.BLUETOOTH,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
     }
 }
 
@@ -54,7 +68,7 @@ class MainScreen : AndroidScreen() {
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         val snackHostState = remember { SnackbarHostState() }
         val localCoroutineScope = rememberCoroutineScope()
-
+        val navigator = LocalNavigator.current
 
         LaunchedEffect(key1 = Unit) {
             viewModel.events.flowWithLifecycle(lifecycle).onEach {
@@ -64,36 +78,48 @@ class MainScreen : AndroidScreen() {
                             snackHostState.showSnackbar(it.message)
                         }
                     }
+
+                    is MainEvents.NavigateToChat -> {
+                        navigator?.push(ChatScreen(it.device))
+                    }
                 }
             }.launchIn(this)
         }
 
-        MainContent(uiState = uiState) {
-            if (uiState.isScanning) {
-                viewModel.stopDiscovery()
-            } else {
-                if (context.isPermissionsEnabled(bluetoothPermissions)) {
-                    viewModel.startDiscovery()
+        MainContent(
+            uiState = uiState,
+            onScanOrStop = {
+                if (uiState.isScanning) {
+                    viewModel.stopDiscovery()
                 } else {
-                    context.checkPermissions(
-                        permission = bluetoothPermissions,
-                        onGranted = {
-                            viewModel.startDiscovery()
-                        },
-                        onDenied = {
-                            viewModel.showSnackMessage("Denied")
-                        },
-                    )
+                    if (context.isPermissionsEnabled(bluetoothPermissions)) {
+                        viewModel.startDiscovery()
+                    } else {
+                        context.checkPermissions(
+                            permission = bluetoothPermissions,
+                            onGranted = {
+                                viewModel.startDiscovery()
+                            },
+                            onDenied = {
+                                viewModel.showSnackMessage("Denied")
+                            },
+                        )
+                    }
                 }
-            }
-        }
-
-
+            },
+            onDeviceClick = viewModel::connectToDevice,
+            onStartServer = viewModel::waitForIncomingConnections
+        )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun MainContent(uiState: MainUiState, onScanOrStop: () -> Unit) {
+    fun MainContent(
+        uiState: MainUiState,
+        onScanOrStop: () -> Unit,
+        onDeviceClick: (BluetoothDevice) -> Unit,
+        onStartServer: () -> Unit
+    ) {
         val textButtonState: String by remember(uiState.isScanning) {
             mutableStateOf(if (uiState.isScanning) "Stop" else "Scan")
         }
@@ -103,8 +129,14 @@ class MainScreen : AndroidScreen() {
                     TopAppBar(
                         title = { Text(text = stringResource(id = R.string.app_name)) },
                         actions = {
+                            if (uiState.isScanning) {
+                                CircularProgressIndicator(modifier = Modifier.size(40.dp))
+                            }
                             TextButton(onClick = onScanOrStop) {
                                 Text(text = textButtonState)
+                            }
+                            TextButton(onClick = onStartServer) {
+                                Text(text = "Server")
                             }
                         },
                     )
@@ -146,7 +178,7 @@ class MainScreen : AndroidScreen() {
                             }
                             items(items = uiState.scannedDevices) { scannedDevice ->
                                 ScannedDeviceItem(bluetoothDevice = scannedDevice) {
-                                    //Click to connect
+                                    onDeviceClick.invoke(scannedDevice)
                                 }
                             }
                         }
