@@ -9,39 +9,41 @@ import kotlinx.coroutines.withContext
 import uz.uni_team.bluetooth_sample.domain.chat.BluetoothMessage
 import uz.uni_team.bluetooth_sample.domain.chat.TransferFailedException
 import java.io.IOException
+import java.net.UnknownHostException
 
 class BluetoothDataTransferService(
     private val socket: BluetoothSocket
 ) {
-    fun listenForIncomingMessages(): Flow<BluetoothMessage> {
-        return flow {
-            if(!socket.isConnected) {
-                return@flow
-            }
-            val buffer = ByteArray(1024)
-            while(true) {
-                val byteCount = try {
-                    socket.inputStream.read(buffer)
-                } catch(e: IOException) {
-                    throw TransferFailedException()
-                }
+    fun listenForIncomingMessages(): Flow<BluetoothMessage> = flow {
 
-                emit(
-                    buffer.decodeToString(
-                        endIndex = byteCount
-                    ).toBluetoothMessage(
-                        isFromLocalUser = false
-                    )
-                )
+        if (!socket.isConnected) {
+           throw UnknownHostException()
+        }
+        val buffer = ByteArray(1024)
+            println("Keldi")
+        while (true) {
+            val byteCount = try {
+                socket.inputStream.read(buffer)
+            } catch (e: IOException) {
+                throw TransferFailedException()
             }
-        }.flowOn(Dispatchers.IO)
-    }
+
+            emit(
+                buffer.decodeToString(
+                    endIndex = byteCount
+                ).toBluetoothMessage(
+                    isFromLocalUser = false
+                )
+            )
+        }
+    }.flowOn(Dispatchers.IO)
+
 
     suspend fun sendMessage(bytes: ByteArray): Boolean {
         return withContext(Dispatchers.IO) {
             try {
                 socket.outputStream.write(bytes)
-            } catch(e: IOException) {
+            } catch (e: IOException) {
                 e.printStackTrace()
                 return@withContext false
             }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +53,7 @@ class MainViewModel @Inject constructor(
         bluetoothController.isConnected.onEach { isConnected ->
             _state.update { it.copy(isConnected = isConnected) }
             if (isConnected) {
+                delay(2000)
                 _events.send(MainEvents.NavigateToChat(bluetoothController.lastConnectedDevice))
             }
         }.launchIn(viewModelScope)

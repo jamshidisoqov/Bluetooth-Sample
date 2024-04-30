@@ -7,8 +7,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uz.uni_team.bluetooth_sample.domain.chat.BluetoothController
@@ -45,11 +43,11 @@ class ChatViewModel @Inject constructor(
 
     private fun listenMessages() {
         viewModelScope.launch {
-            controller.getSubscribeMessages().onEach { messages ->
-                _state.update { it.copy(messages = messages) }
-            }.catch {
+            controller.getSubscribeMessages().catch {
                 logging(it.message)
-            }.launchIn(viewModelScope)
+            }.collect { messages ->
+                _state.update { it.copy(messages = messages) }
+            }
         }
     }
 
